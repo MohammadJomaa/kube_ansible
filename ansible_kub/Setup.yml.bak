@@ -1,0 +1,502 @@
+---
+- name: K8s
+  hosts: localhost
+  #remote_user: azureuser
+  become: yes
+  become_method: sudo
+  #gather_facts: no
+  vars:
+    ansible_ssh_private_key_file: ~/.ssh/azureuser       
+    k8s_version: "1.24"     # Kubernetes version to be installed
+    #user: azureuser  for istio
+    data_storage_path: "/usr"
+    selinux_state: permissive                            # SELinux state to be set on k8s nodes                 
+    timezone: "Africa/Nairobi"                           # Timezone to set on all nodes
+    k8s_cni: calico                                      # calico, flannel
+    container_runtime: cri-o                             # docker, cri-o, containerd 
+    pod_network_cidr: "192.168.0.0/16"                   # pod subnet if using cri-o runtime
+    configure_firewalld: true 
+    # true / false (keep it false, k8s>1.19 have issues with firewalld)
+    # Docker proxy support
+    istio_version: 1.14.1
+    setup_proxy: false                                   # Set to true to configure proxy
+    proxy_server: "proxy.example.com:8080"               # Proxy server address and port
+    docker_proxy_exclude: "localhost,127.0.0.1"          # Adresses to exclude from proxy
+  roles:
+    - kubernetes-bootstrap
+  tasks:    
+    # You can also use the 'cmd' parameter instead of free form format.
+    - name: ( kube ) Check if cluster is created 
+      become: false
+      tags: kube
+      ansible.builtin.shell:
+        cmd: |
+               kubectl cluster-info
+      register: kube_cluster
+      ignore_errors: yes
+ 
+    - name: run kubeadm init command 
+      become: false
+      tags: kube
+      ansible.builtin.shell:
+       cmd: sudo kubeadm init  --pod-network-cidr '{{ pod_network_cidr }}' --upload-certs
+      when:  "kube_cluster.rc != 0"
+      ignore_errors: yes
+
+    - name: Copy the kubectl configuration file.
+      tags: kube
+      become: false
+      ansible.builtin.shell:
+        cmd: |
+              mkdir -p $HOME/.kube
+              sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+              sudo chown $(id -u):$(id -g) $HOME/.kube/config  
+              kubectl taint nodes $HOSTNAME   node-role.kubernetes.io/control-plane- 
+              kubectl taint nodes $HOSTNAME  node-role.kubernetes.io/master-
+      when:  "kube_cluster.rc != 0"
+
+
+    #---------------------------------------------
+    #Calico
+    #
+    - name: (Calico) Create a deployment
+      become: false
+      tags: calico
+      ansible.builtin.shell:
+        cmd: kubectl create -f "{{ item }}"   
+      with_items:
+       - https://docs.projectcalico.org/manifests/tigera-operator.yaml    
+       - https://docs.projectcalico.org/manifests/custom-resources.yaml
+      ignore_errors: yes
+
+
+    #------------------------------------------------------------------------------
+    # Istio  
+    
+    - name: (Istio ) Check if harbor exixts
+      become: false
+      tags: istio
+      ansible.builtin.shell:
+        cmd: |
+              kubectl -n istio-system get deployment istio-ingressgateway istiod
+      register: istio
+      ignore_errors: yes
+ 
+    - name: (Istio)Installing istio
+      become: false
+      tags: istio
+      ansible.builtin.shell:
+        cmd: |
+              curl -L https://istio.io/downloadIstio | ISTIO_VERSION="{{ istio_version }}"  TARGET_ARCH=x86_64 sh -
+      when: "'(NotFound)' in istio.stderr"
+      
+    - name: (Istio)  Export istio path in  "{{ user }}" env. In /etc/profile.d/istio-path.sh 
+      become: true
+      tags: istio
+      ansible.builtin.shell:
+        cmd: |
+              cd /home/"{{ user }}"/istio-"{{ istio_version }}"/bin
+              ISTIO_BIN_DIR=$(pwd)
+              echo $ISTIO_BIN_DIR
+              echo export PATH='$'PATH:$ISTIO_BIN_DIR >  /etc/profile.d/istio-path.sh
+      when: "'(NotFound)' in istio.stderr"
+
+ 
+    - name: (Istio) Run Istio commands
+      tags: istio
+      become: false
+      ansible.builtin.shell:        
+        cmd: |         
+              istioctl install --set profile=demo -y
+              istioctl analyze
+              istioctl operator init
+              istioctl install -f  istio-"{{ istio_version }}"/samples/operator/pilot-k8s.yaml -y
+      async: 30
+      poll: 0        
+      when: "'(NotFound)' in istio.stderr"      
+       
+
+    #------------------------------------------------------
+    # Helm
+    
+    - name: (Helm ) Check if helm is existed
+      become: false
+      tags: helm
+      ansible.builtin.shell:
+        cmd: |
+              helm  version
+      register: helm
+      ignore_errors: yes
+
+    - name: (Helm) Install helm
+      become: false
+      tags: helm
+      ansible.builtin.shell:
+        cmd: |
+              curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+              chmod 700 get_helm.sh
+              ./get_helm.sh > helm_result
+              cat helm_result 
+              rm get_helm.sh helm_result
+      when: "'version.BuildInfo' not in helm.stderr"
+    #----------------------------------------------------
+   
+    
+
+
+    #------------------------------------------------------
+    # elastic Search
+    - name: ( Elastic) Check if helm is existed
+      become: false
+      tags: elastic
+      ansible.builtin.shell:
+        cmd: |
+              kubectl -n elastic-system get statefulset elastic-operator
+              kubectl get pods --selector='elasticsearch.k8s.elastic.co/cluster-name=elastic-search' -n elasticsearch
+      register: elastic
+      ignore_errors: yes
+
+    - name: (Elastic) Create a directory if it does not exist for Elastic Yaml files
+      become: false
+      tags: elastic
+      ansible.builtin.file:
+        path: ~/elastic
+        state: directory
+      when: "'No resources' in elastic.stderr"
+   
+    - name: (Elastic) Create a directory if it does not exist for Elastic data
+      become: true
+      tags: elastic
+      ansible.builtin.file:
+        path: '{{ data_storage_path }}/data_es1'
+        state: directory
+        mode: '0777'
+      when: "'No resources' in elastic.stderr"
+   
+    - name: (Elastic) Copy elasticsearch yaml files to master
+      become: false
+      tags: elastic
+      ansible.builtin.copy:
+        src: ./k8s/ElasticSearche/es.yaml
+        dest: ~/elastic/es.yaml
+      when: "'No resources' in elastic.stderr"
+
+    - name: (Elastic) Replce Data storage path in yaml files 
+      become: false
+      tags: elastic
+      ansible.builtin.replace:
+        path: ~/elastic/es.yaml 
+        regexp: "<<Data_Path>>"
+        replace: '{{ data_storage_path }}'    
+      when: "'No resources' in elastic.stderr"
+
+    - name: (Elastic) deploying elastic search 
+      become: false
+      tags: elastic
+      ansible.builtin.shell:
+        cmd: |               
+              kubectl apply -f "https://download.elastic.co/downloads/eck/2.3.0/crds.yaml"
+              kubectl apply -f "https://download.elastic.co/downloads/eck/2.3.0/operator.yaml"  
+              kubectl create namespace elasticsearch
+              kubectl apply -f ~/elastic/es.yaml -n elasticsearch
+              #kubectl get elasticsearch -n elasticsearch
+              #kubectl get pods --selector='elasticsearch.k8s.elastic.co/cluster-name=elastic-search' -n elasticsearch
+              kubectl get service  elastic-search-es-http -n elasticsearch
+              sudo chmod -Rf 777 '{{ data_storage_path }}/data_es1/'
+              # check out pls https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-deploy-elasticsearch.html 
+      when: "'No resources' in elastic.stderr"
+      #ignore_errors: yes       
+    #------------------------------------------------------
+    # Harbor
+    - name: ( harbor ) Check if harbor exixts
+      become: false
+      tags: harbor
+      ansible.builtin.shell:
+        cmd: |
+                kubectl -n harbor get pod harbor-release-redis-0
+      register: harbor
+      ignore_errors: yes
+
+    - name: ( Harbor ) Create a directory if it does not exist for Harbor yaml files
+      become: false
+      tags: harbor
+      ansible.builtin.file:
+       path: ~/harbor/helm
+       state: directory
+      when: "'(NotFound)'in harbor.stderr"
+    
+    - name: ( Harbor ) Create a directory if it does not exist for Harbor data
+      become: true
+      tags: harbor
+      ansible.builtin.file:
+       path: '{{ data_storage_path }}/data_harbor/'
+       state: directory
+       mode: '0777'
+      when: "'(NotFound)'in harbor.stderr"
+
+    - name: ( Harbor ) Copy harbor yaml files to master
+      become: false
+      tags: harbor
+      ansible.builtin.copy:
+        src: ./k8s/Harbor/harbor.yaml
+        dest: ~/harbor/harbor.yaml
+      when: "'(NotFound)' in harbor.stderr"
+
+    - name: (Harbor) Replce Data storage path in yaml files
+      become: false
+      tags: harbor
+      ansible.builtin.replace:
+        path: ~/harbor/harbor.yaml
+        regexp: "<<Data_Path>>"
+        replace: '{{ data_storage_path }}'
+      when: "'(NotFound)' in harbor.stderr"
+
+    - name: ( Harbor ) Copy harbor Helm files to helm node
+      become: false
+      tags: harbor
+      ansible.builtin.copy:
+        src: ./Helm/harbor2/harbor/
+        dest: ~/harbor/helm
+      when: "'(NotFound)' in harbor.stderr"
+
+    - name: ( Harbor ) Fill out the values.yaml  file with StorageClass = default
+      tags: harbor
+      become: false
+      ansible.builtin.replace:
+       path: ~/harbor/helm/values.yaml
+       regexp: 'storageClass: ""'
+       replace: 'storageClass: "default"'
+      when: "'(NotFound)' in harbor.stderr"
+
+    - name: ( Harbor ) Set how to expose the harbor service. Set the type as "ingress", "clusterIP", "nodePort" or "loadBalancer"
+      tags: harbor
+      become: false
+      ansible.builtin.replace:
+       path: ~/harbor/helm/values.yaml
+       regexp: 'type: ingress'
+       replace: 'type: nodePort'
+      when: "'(NotFound)' in harbor.stderr"
+
+    - name: deploying Harbor
+      become: false
+      tags: harbor
+      ansible.builtin.shell:
+        cmd: |
+               kubectl create ns harbor  
+               kubectl apply -f ~/harbor/harbor.yaml
+               helm install harbor-release ~/harbor/helm/  --namespace=harbor --set expose.tls.auto.commonName="example.com"
+               #sudo setfacl -d -m  group:10000:rwx '{{ data_storage_path }}/data_harbor/'
+               #sudo setfacl -m  group:10000:rwx '{{ data_storage_path }}/data_harbor/'
+               #sudo chown -Rf 10000:10000 '{{ data_storage_path }}/data_harbor/'
+               #sudo chmod -Rf g+rwxs '{{ data_storage_path }}/data_harbor/'
+               sudo  chmod -Rf 777  '{{ data_storage_path }}/data_harbor/'
+               #kubectl -n harbor get pods
+               #kubectl -n harbor get svc
+               #kubectl -n harbor get svc | grep -i  nodeport
+               #curl http://localhost:30002
+      when: "'(NotFound)' in harbor.stderr"
+    
+      
+    #https://github.com/k8snetworkplumbingwg/whereabouts
+    #whereabouts
+    
+    - name: ( whereabouts ) Check if whereabouts exixts
+      become: false
+      tags: whereabouts
+      ansible.builtin.shell:
+        cmd: |
+                kubectl get daemonset -n kube-system  whereabouts
+      register: whereabouts          
+      ignore_errors: yes
+   
+    - name: ( whereabouts ) Create a directory if it does not exist for whereabouts 
+      become: false
+      tags: whereabouts
+      ansible.builtin.file:
+       path: ~/whereabouts/helm/
+       state: directory
+      when: "'(NotFound)' in whereabouts.stderr"
+
+    - name: ( whereabouts ) Copy whereabouts Helm files to helm node
+      become: false
+      tags: whereabouts
+      ansible.builtin.copy:
+        src: ./Helm/whereabouts/helm-charts/
+        dest: ~/whereabouts/helm/
+      when: "'(NotFound)' in whereabouts.stderr"
+     
+    - name:  "( whereabouts ) deploying multus & whereabouts"
+      become: false
+      tags: whereabouts
+      ansible.builtin.shell:
+        cmd: |
+               cd ~/whereabouts/helm/
+               helm upgrade --install multus ./multus  --namespace kube-system
+               helm upgrade --install whereabouts ./whereabouts --namespace kube-system
+      when: "'(NotFound)' in whereabouts.stderr"
+       
+
+    #----------------------------------------------
+
+   
+
+
+    #https://docs.fluentbit.io/manual/installation/kubernetes
+    #fluentbit.
+    - name: ( fluentbit. ) Check if fluentbit exixts
+      become: false
+      tags: fluentbit
+      ansible.builtin.shell:
+        cmd: |
+                kubectl -n fluent-bit get pods
+      register: fluentbit
+      ignore_errors: yes
+
+     
+    - name: ( fluentbit ) Create a directory if it does not exist for fluentbit
+      become: false
+      tags: fluentbit
+      ansible.builtin.file:
+       path:  ~/fluent-bit/helm/
+       state: directory
+      when: "'No resources' in fluentbit.stderr"
+
+    - name: ( fluentbit  ) Copy fluentbit Helm files to helm node
+      become: false
+      tags: fluentbit
+      ansible.builtin.copy:
+        src: ./Helm/fluent-bit/fluent-bit/
+        dest: ~/fluent-bit/helm/ 
+      when: "'No resources' in fluentbit.stderr"
+
+    - name:  "( fluentbit ) deploying fluentbit"
+      become: false
+      tags: fluentbit
+      ansible.builtin.shell:
+        cmd: |
+               kubectl create ns fluent-bit 
+               cd ~/fluent-bit/helm/ 
+               helm upgrade --install fluent-bit . --namespace=fluent-bit
+      when: "'No resources' in fluentbit.stderr"
+      ignore_errors: yes
+ 
+    
+    #----------------------------------------------
+    #Deploy Prometheus / Grafana Monitoring Stack on Kubernetes
+    #https://computingforgeeks.com/setup-prometheus-and-grafana-on-kubernetes/
+      
+    #Prometheus
+    - name: ( Prometheus ) Check if Prometheus exixts
+      become: false
+      tags: prometheus
+      ansible.builtin.shell:
+        cmd: |
+                kubectl -n monitoring get deployments prometheus-adapter prometheus-operator kube-state-metrics grafana blackbox-exporter
+      register: prometheus
+      ignore_errors: yes
+
+
+    - name: ( prometheus ) Create a directory if it does not exist for prometheus 
+      become: false
+      tags: prometheus
+      ansible.builtin.file:
+       path:  ~/prometheus/
+       state: directory
+      when: "'(NotFound)' in prometheus.stderr"
+
+    - name: ( prometheus  ) Copy prometheus files to master node
+      become: false
+      tags: prometheus
+      ansible.builtin.copy:
+        src: ./kube-prometheus/kube-prometheus/
+        dest: ~/prometheus/
+      when: "'(NotFound)' in prometheus.stderr"
+
+    - name:  "(prometheus ) deploying prometheus suite"
+      become: false
+      tags: prometheus
+      ansible.builtin.shell:
+        cmd: |
+              cd ~/prometheus/
+              kubectl create -f manifests/setup 
+              kubectl get ns monitoring
+              kubectl get pods -n monitoring
+              kubectl create -f manifests/
+              kubectl get pods -n monitoring
+              kubectl get svc -n monitoring
+              #kubectl --namespace monitoring patch svc prometheus-k8s -p '{"spec": {"type": "NodePort"}}'
+              #kubectl --namespace monitoring patch svc alertmanager-main -p '{"spec": {"type": "NodePort"}}'
+              #kubectl --namespace monitoring patch svc grafana -p '{"spec": {"type": "NodePort"}}'
+              kubectl -n monitoring svc
+              #Destroying / Tearing down Prometheus monitoring stack
+              #kubectl delete --ignore-not-found=true -f manifests/ -f manifests/setup
+      when: "'(NotFound)' in prometheus.stderr"
+      ignore_errors: yes
+   
+        
+    #https://levelup.gitconnected.com/how-to-deploy-apache-kafka-with-kubernetes-9bd5caf7694f
+    #Deploy Apache Kafka & zookeeper  With Kubernetes
+   
+    - name: ( kafka & zookeeper ) Check if kafka exixts
+      become: false
+      tags: kafka
+      ansible.builtin.shell:
+        cmd: |
+                kubectl -n kafka get deployments  kafka-broker zookeeper
+      register: kafka
+      ignore_errors: yes
+
+    - name: ( kafka & zookeeper ) Create a directory if it does not exist for kafka yaml files
+      become: false
+      tags: kafka
+      ansible.builtin.file:
+       path:  ~/kafka/
+       state: directory
+      when: "'(NotFound)' in kafka.stderr"
+    
+    - name: ( kafka & zookeeper ) Create a directory if it does not exist for kafka
+      become: true
+      tags: kafka
+      ansible.builtin.file:
+       path:  '{{ data_storage_path }}/data_kafka/'
+       mode: '0777'
+       state: directory
+      when: "'(NotFound)' in kafka.stderr"
+
+    - name: ( kafka & zookeeper ) Create a directory if it does not exist for kafka
+      become: true
+      tags: kafka
+      ansible.builtin.file:
+       path:  '{{ data_storage_path }}/data_zookeeper/'
+       mode: '0777'
+       state: directory
+      when: "'(NotFound)' in kafka.stderr"
+
+    - name: ( kafka  & zookeeper ) Copy kafka yaml  files to master node
+      become: false
+      tags: kafka
+      ansible.builtin.copy:
+        src: ./k8s/kafka/deploy-kafka.yaml
+        dest: ~/kafka/deploy-kafka.yaml
+      when: "'(NotFound)' in kafka.stderr"
+ 
+    - name: (kafka & zookeeper ) Replce Data storage path in yaml files
+      tags: kafka
+      become: false
+      ansible.builtin.replace:
+        path: ~/kafka/deploy-kafka.yaml
+        regexp: "<<Data_Path>>"
+        replace: '{{ data_storage_path }}'
+      when: "'(NotFound)' in kafka.stderr"
+      
+    - name:  "( kafka & zookeeper ) deploying kafka & Zookeeper"
+      become: false
+      tags: kafka
+      ansible.builtin.shell:
+        cmd: |
+               #kubectl taint nodes $HOSTNAME node.kubernetes.io/disk-pressure- 
+               kubectl apply -f ~/kafka/deploy-kafka.yaml
+               sudo chmod -Rf 777 '{{ data_storage_path }}/data_zookeeper/'
+               sudo chmod -Rf 777 '{{ data_storage_path }}/data_kafka/'  
+               sudo rm -rf elastic fluent-bit harbor  kafka prometheus  whereabouts               
+      when: "'(NotFound)' in kafka.stderr"              

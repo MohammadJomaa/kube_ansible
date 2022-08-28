@@ -1,0 +1,89 @@
+---
+- name: Configure Cri-o YUM repository
+  ansible.builtin.template:
+    src: crio.repo.j2
+    dest: /etc/yum.repos.d/crio.repo
+
+- name: Setup required sysctl params
+  ansible.posix.sysctl:
+    name: '{{ item.key }}'
+    value: '{{ item.value }}'
+    sysctl_set: yes
+    state: present
+    reload: yes
+  with_items:
+    - {key: net.bridge.bridge-nf-call-ip6tables, value: 1}
+    - {key: net.bridge.bridge-nf-call-iptables,  value: 1}
+    - {key: net.ipv4.ip_forward,  value: 1}
+
+- name: Install crun.x86_64
+  tags: kube
+  yum:
+    update_cache: yes
+    name: crun.x86_64
+    state: installed
+
+- name: Install cri-o
+  yum:
+    name: cri-o
+    state: latest
+    update_cache: yes
+
+- name: Configure cri-o subnet
+  ansible.builtin.replace:
+    path: /etc/cni/net.d/100-crio-bridge.conf
+    regexp: '10\.85\.0\.0\/16'
+    replace: '{{ pod_network_cidr }}'
+  ignore_errors: True
+
+- name: Checkn if /etc/crio/crio.conf has default_runtime = "crun"
+  become: false
+  tags: kube
+  ansible.builtin.shell:
+      cmd: cat /etc/crio/crio.conf
+  register: crun
+ 
+- name: edit the file /etc/crio/crio.conf file and add the following lines as its content. It tells CRI-O to use crun by default
+  tags: kube
+  ansible.builtin.replace:
+    replace: |
+             [crio.runtime]
+             default_runtime = "crun"
+             #add crun by ansible
+    path: "/etc/crio/crio.conf"
+    regexp:  \[crio\.runtime\]
+  when: "'#add crun by ansible' not in crun.stdout"
+
+- name: Create a directory if it does not exist |  /etc/crio/crio.conf.d/
+  tags: kube
+  ansible.builtin.file:
+        path: /etc/crio/crio.conf.d/
+        state: directory
+
+- name: Creating an empty file  /etc/crio/crio.conf.d/01-crio-runc.conf
+  tags: kube
+  file:
+    path: "/etc/crio/crio.conf.d/01-crio-runc.conf"
+    state: touch
+
+- name: add contetnt to /etc/crio/crio.conf.d/01-crio-runc.conf  file
+  tags: kube
+  copy:
+     content: |
+                  [crio.runtime.runtimes.runc]
+                  runtime_path = "/usr/lib/cri-o-runc/sbin/runc"
+                  runtime_type = "oci"
+                  runtime_root = "/run/runc"
+
+                  [crio.runtime.runtimes.crun]
+                  runtime_path = "/usr/bin/crun"
+                  runtime_type = "oci"
+                  runtime_root = "/run/crun"
+     dest: /etc/crio/crio.conf.d/01-crio-runc.conf
+    
+- name: Start and enable crio service
+  ansible.builtin.service:
+    name: crio
+    state: restarted
+    enabled: yes
+

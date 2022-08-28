@@ -1,0 +1,125 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: default
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: Immediate
+
+#harbor-pvs.yaml
+#----------
+---
+#Jobservice
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: data01
+  labels:
+    type: local
+spec:
+  storageClassName: "default"
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "<<Data_Path>>/data_harbor/data01"
+
+---
+#Postgres
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: data02
+  labels:
+    type: local
+spec:
+  storageClassName: "default"
+  capacity:
+    storage: 8Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "<<Data_Path>>/data_harbor/data02"
+---
+#Chartmuseum
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: data03
+  labels:
+    type: local
+spec:
+  storageClassName: "default"
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "<<Data_Path>>/data_harbor/data03"
+
+---
+#Trivy
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: data04
+  labels:
+    type: local
+spec:
+  storageClassName: "default"
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "<<Data_Path>>/data_harbor/data04"
+
+---
+#Registry
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: data05
+  labels:
+    type: local
+spec:
+  storageClassName: "default"
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "<<Data_Path>>/data_harbor/data05"
+
+---
+#Redis
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: data06
+  labels:
+    type: local
+spec:
+  storageClassName: "default"
+  capacity:
+    storage: 8Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "<<Data_Path>>/data_harbor/data06"
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: data07
+  labels:
+    type: local
+spec:
+  storageClassName: "default"
+  capacity:
+    storage: 8Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "<<Data_Path>>/data_harbor/data07"
+

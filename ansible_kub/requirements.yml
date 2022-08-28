@@ -1,0 +1,7 @@
+collections:
+    # Install a collection from Ansible Galaxy.
+    - name: community.general.modprobe
+      source: https://galaxy.ansible.com
+    # ansible-galaxy collection install kubernetes.core  
+    - name: kubernetes.core.k8s
+      source: https://galaxy.ansible.com
