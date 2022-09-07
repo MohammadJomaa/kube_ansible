@@ -212,7 +212,15 @@
               # curl -u "elastic:$PASSWORD" -k "https://localhost:30415"
               # check out pls https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-deploy-elasticsearch.html 
       when: "'No resources' in elastic.stderr"
-      #ignore_errors: yes       
+      #ignore_errors: yes
+    
+    #for kibana
+    #kubectl -n elasticsearchget kibana
+    #kubectl -n elasticsearch get pod --selector='kibana.k8s.elastic.co/name=kibana'
+    #kubectl -n elasticsearch get service kibana-kb-http
+    #kubectl -n elasticsearch port-forward service/kibana-kb-http 5601
+    #kubectl -n elasticsearch  get secret elastic-search-es-elastic-user  -o=jsonpath='{.data.elastic}' | base64 --decode; echo
+    
     #------------------------------------------------------
     # Harbor
     - name: ( harbor ) Check if harbor exixts
