@@ -149,9 +149,9 @@
 
 
     #------------------------------------------------------
-    # elastic Search
+    # elastic  ans Kibana Search
     #https://www.elastic.co/guide/en/cloud-on-k8s/1.8/k8s-deploy-elasticsearch.html
-    - name: ( Elastic) Check if helm is existed
+    - name: ( Elastic - Kibana) Check if helm is existed
       become: false
       tags: elastic
       ansible.builtin.shell:
@@ -161,7 +161,7 @@
       register: elastic
       ignore_errors: yes
 
-    - name: (Elastic) Create a directory if it does not exist for Elastic Yaml files
+    - name:  ( Elastic - Kibana)  Create a directory if it does not exist for Elastic Yaml files
       become: false
       tags: elastic
       ansible.builtin.file:
@@ -169,7 +169,7 @@
         state: directory
       when: "'No resources' in elastic.stderr"
    
-    - name: (Elastic) Create a directory if it does not exist for Elastic data
+    - name:  ( Elastic - Kibana)  Create a directory if it does not exist for Elastic data
       become: true
       tags: elastic
       ansible.builtin.file:
@@ -178,7 +178,7 @@
         mode: '0777'
       when: "'No resources' in elastic.stderr"
    
-    - name: (Elastic) Copy elasticsearch yaml files to master
+    - name:  ( Elastic - Kibana)  Copy elasticsearch yaml files to master
       become: false
       tags: elastic
       ansible.builtin.copy:
@@ -186,7 +186,7 @@
         dest: ~/elastic/es.yaml
       when: "'No resources' in elastic.stderr"
 
-    - name: (Elastic) Replce Data storage path in yaml files 
+    - name: ( Elastic - Kibana)  Replce Data storage path in yaml files 
       become: false
       tags: elastic
       ansible.builtin.replace:
@@ -195,7 +195,7 @@
         replace: '{{ data_storage_path }}'    
       when: "'No resources' in elastic.stderr"
 
-    - name: (Elastic) deploying elastic search 
+    - name:  ( Elastic - Kibana)  deploying elastic search 
       become: false
       tags: elastic
       ansible.builtin.shell:
