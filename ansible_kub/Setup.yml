@@ -56,6 +56,7 @@
               sudo chown $(id -u):$(id -g) $HOME/.kube/config  
               kubectl taint nodes $HOSTNAME   node-role.kubernetes.io/control-plane- 
               kubectl taint nodes $HOSTNAME  node-role.kubernetes.io/master-
+      ignore_errors: yes        
       when:  "kube_cluster.rc != 0"
 
 
