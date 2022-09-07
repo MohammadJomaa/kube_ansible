@@ -208,6 +208,8 @@
               #kubectl get pods --selector='elasticsearch.k8s.elastic.co/cluster-name=elastic-search' -n elasticsearch
               kubectl get service  elastic-search-es-http -n elasticsearch
               sudo chmod -Rf 777 '{{ data_storage_path }}/data_es1/'
+              #"PASSWORD=$(kubectl -n elasticsearch get secret elastic-search-es-elastic-user -o go-template='{{.data.elastic | base64decode}}')"
+              # curl -u "elastic:$PASSWORD" -k "https://localhost:30415"
               # check out pls https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-deploy-elasticsearch.html 
       when: "'No resources' in elastic.stderr"
       #ignore_errors: yes       
