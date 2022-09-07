@@ -33,4 +33,20 @@ spec:
     - ReadWriteOnce
   hostPath:
     path: "<<Data_Path>>/data_es1"
-    
+---
+#https://www.elastic.co/guide/en/cloud-on-k8s/1.8/k8s-deploy-kibana.html
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  namespace: elasticsearch
+  name: kibana
+spec:
+  version: 8.4.1
+  count: 1
+  elasticsearchRef:
+    name: elastic-search
+#kubectl -n elasticsearchget kibana
+#kubectl -n elasticsearch get pod --selector='kibana.k8s.elastic.co/name=kibana'
+#kubectl -n elasticsearch get service kibana-kb-http
+#kubectl -n elasticsearch port-forward service/kibana-kb-http 5601
+#kubectl -n elasticsearch  get secret elastic-search-es-elastic-user  -o=jsonpath='{.data.elastic}' | base64 --decode; echo   
