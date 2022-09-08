@@ -383,7 +383,7 @@
         src: ./Helm/fluent-bit/fluent-bit/
         dest: ~/fluent-bit/helm/ 
       when: "'No resources' in fluentbit.stderr"
-
+    
     - name:  "( fluentbit ) deploying fluentbit"
       become: false
       tags: fluentbit
@@ -392,6 +392,8 @@
                kubectl create ns fluent-bit 
                cd ~/fluent-bit/helm/ 
                helm upgrade --install fluent-bit . --namespace=fluent-bit
+               #password = kubectl -n elasticsearch  get secret elastic-search-es-elastic-user  -o=jsonpath='{.data.elastic}' | base64 --decode; echo
+               #open configmap in fluent-bit and set in password in HTTP_Passwd to allow fluent-bit connect with elastic
       when: "'No resources' in fluentbit.stderr"
       ignore_errors: yes
  
