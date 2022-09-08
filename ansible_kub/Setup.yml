@@ -347,7 +347,7 @@
         cmd: |
                cd ~/whereabouts/helm/
                helm upgrade --install multus ./multus  --namespace kube-system
-               helm upgrade --install whereabouts ./whereabouts --namespace kube-system
+               #helm upgrade --install whereabouts ./whereabouts --namespace kube-system
       when: "'(NotFound)' in whereabouts.stderr"
        
 
