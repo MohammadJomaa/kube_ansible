@@ -318,17 +318,29 @@ config:
     [OUTPUT]
         Name es
         Match kube.*
-        Host elasticsearch-master
         Logstash_Format On
         Retry_Limit False
-
+        Host            elastic-search-es-http.elasticsearch
+        Port            9200
+        HTTP_User       elastic
+        HTTP_Passwd     23JLv76o8i9K7t99MWWzL7tc
+        tls             On
+        tls.verify      Off
+        Suppress_Type_Name On
+       
     [OUTPUT]
         Name es
         Match host.*
-        Host elasticsearch-master
         Logstash_Format On
         Logstash_Prefix node
         Retry_Limit False
+        Host            elastic-search-es-http.elasticsearch
+        Port            9200
+        HTTP_User       elastic
+        HTTP_Passwd     23JLv76o8i9K7t99MWWzL7tc
+        tls             On
+        tls.verify      Off
+        Suppress_Type_Name On
 
   ## https://docs.fluentbit.io/manual/pipeline/parsers
   customParsers: |
