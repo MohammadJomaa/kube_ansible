@@ -182,15 +182,15 @@
       become: false
       tags: elastic
       ansible.builtin.copy:
-        src: ./k8s/ElasticSearche/es.yaml
-        dest: ~/elastic/es.yaml
+        src: ./k8s/ElasticSearche/ElasticKibana.yaml
+        dest: ~/elastic/ElasticKibana.yaml
       when: "'No resources' in elastic.stderr"
 
     - name: ( Elastic - Kibana)  Replce Data storage path in yaml files 
       become: false
       tags: elastic
       ansible.builtin.replace:
-        path: ~/elastic/es.yaml 
+        path: ~/elastic/ElasticKibana.yaml
         regexp: "<<Data_Path>>"
         replace: '{{ data_storage_path }}'    
       when: "'No resources' in elastic.stderr"
