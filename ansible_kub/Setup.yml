@@ -203,7 +203,7 @@
               kubectl apply -f "https://download.elastic.co/downloads/eck/2.3.0/crds.yaml"
               kubectl apply -f "https://download.elastic.co/downloads/eck/2.3.0/operator.yaml"  
               kubectl create namespace elasticsearch
-              kubectl apply -f ~/elastic/es.yaml -n elasticsearch
+              kubectl apply -f ~/elastic/ElasticKibana.yaml -n elasticsearch
               #kubectl get elasticsearch -n elasticsearch
               #kubectl get pods --selector='elasticsearch.k8s.elastic.co/cluster-name=elastic-search' -n elasticsearch
               kubectl get service  elastic-search-es-http -n elasticsearch
