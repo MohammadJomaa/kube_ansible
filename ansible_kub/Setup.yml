@@ -1,6 +1,6 @@
 ---
 - name: K8s
-  hosts: localhost
+  hosts: master
   #remote_user: azureuser
   become: yes
   become_method: sudo
@@ -9,8 +9,8 @@
     ansible_ssh_private_key_file: ~/.ssh/azureuser       
     k8s_version: "1.24"     # Kubernetes version to be installed
     
-    #user: azureuser  
-    #for istio
+    user: azureuser  
+    #the same user that we made ssh connection for istio
     
     data_storage_path: "/usr"
     selinux_state: permissive                            # SELinux state to be set on k8s nodes                 
