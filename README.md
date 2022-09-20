@@ -36,5 +36,10 @@ Check ansible_ssh_private_key_file: ~/.ssh/azureuser
 check :
 user: azureuser  
     #the same user that we made ssh connection for istio
+    
+    
+    
+    ansible-playbook -i hosts Setup.yml -vv 
+    
 
 
