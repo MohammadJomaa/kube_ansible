@@ -175,7 +175,7 @@
       ansible.builtin.file:
         path: '{{ data_storage_path }}/data_es1'
         state: directory
-        mode: '0777'
+        mode: '0770'
       when: "'No resources' in elastic.stderr"
    
     - name:  ( Elastic - Kibana)  Copy elasticsearch yaml files to master
@@ -207,7 +207,7 @@
               #kubectl get elasticsearch -n elasticsearch
               #kubectl get pods --selector='elasticsearch.k8s.elastic.co/cluster-name=elastic-search' -n elasticsearch
               kubectl get service  elastic-search-es-http -n elasticsearch
-              sudo chmod -Rf 777 '{{ data_storage_path }}/data_es1/'           
+              sudo chmod -Rf 770 '{{ data_storage_path }}/data_es1/'           
       when: "'No resources' in elastic.stderr"
     #"PASSWORD=$(kubectl -n elasticsearch get secret elastic-search-es-elastic-user -o go-template='{{.data.elastic | base64decode}}')"
     # curl -u "elastic:$PASSWORD" -k "https://localhost:30415"
