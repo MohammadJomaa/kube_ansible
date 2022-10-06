@@ -1,6 +1,6 @@
 ---
 - name: K8s
-  hosts: master
+  hosts: Tarasolelast
   #remote_user: azureuser
   become: yes
   become_method: sudo
@@ -24,14 +24,17 @@
     istio_version: 1.14.1
     setup_proxy: false                                   # Set to true to configure proxy
     proxy_server: "proxy.example.com:8080"               # Proxy server address and port
-    docker_proxy_exclude: "localhost,127.0.0.1"          # Adresses to exclude from proxy
+    docker_proxy_exclude: "localhost,127.0.0.1"          # Adresses to exclude from proxy       
   roles:
-    - kubernetes-bootstrap
+    - { role: kubernetes-bootstrap, tags: ['caas'] }  
   tasks:    
+  
     # You can also use the 'cmd' parameter instead of free form format.
     - name: ( kube ) Check if cluster is created 
       become: false
-      tags: kube
+      tags: 
+      - kube
+      - caas  
       ansible.builtin.shell:
         cmd: |
                kubectl cluster-info
@@ -40,14 +43,18 @@
  
     - name: run kubeadm init command 
       become: false
-      tags: kube
+      tags: 
+      - kube
+      - caas  
       ansible.builtin.shell:
        cmd: sudo kubeadm init  --pod-network-cidr '{{ pod_network_cidr }}' --upload-certs
       when:  "kube_cluster.rc != 0"
       ignore_errors: yes
 
     - name: Copy the kubectl configuration file.
-      tags: kube
+      tags: 
+      - kube
+      - caas  
       become: false
       ansible.builtin.shell:
         cmd: |
@@ -65,7 +72,9 @@
     #
     - name: (Calico) Create a deployment
       become: false
-      tags: calico
+      tags: 
+      - calico
+      - caas  
       ansible.builtin.shell:
         cmd: kubectl create -f "{{ item }}"   
       with_items:
@@ -77,9 +86,11 @@
     #------------------------------------------------------------------------------
     # Istio  
     
-    - name: (Istio ) Check if harbor exixts
+    - name: (Istio ) Check if istio exixts
       become: false
-      tags: istio
+      tags: 
+      - istio
+      - paas  
       ansible.builtin.shell:
         cmd: |
               kubectl -n istio-system get deployment istio-ingressgateway istiod
@@ -88,7 +99,10 @@
  
     - name: (Istio)Installing istio
       become: false
-      tags: istio
+      tags: 
+      - istio
+      - paas  
+
       ansible.builtin.shell:
         cmd: |
               curl -L https://istio.io/downloadIstio | ISTIO_VERSION="{{ istio_version }}"  TARGET_ARCH=x86_64 sh -
@@ -96,7 +110,9 @@
       
     - name: (Istio)  Export istio path in  "{{ user }}" env. In /etc/profile.d/istio-path.sh 
       become: true
-      tags: istio
+      tags: 
+      - istio
+      - paas  
       ansible.builtin.shell:
         cmd: |
               cd /home/"{{ user }}"/istio-"{{ istio_version }}"/bin
@@ -107,7 +123,9 @@
 
  
     - name: (Istio) Run Istio commands
-      tags: istio
+      tags: 
+      - istio
+      - paas  
       become: false
       ansible.builtin.shell:        
         cmd: |         
@@ -125,7 +143,9 @@
     
     - name: (Helm ) Check if helm is existed
       become: false
-      tags: helm
+      tags: 
+      - helm
+      - paas  
       ansible.builtin.shell:
         cmd: |
               helm  version
@@ -134,7 +154,9 @@
 
     - name: (Helm) Install helm
       become: false
-      tags: helm
+      tags: 
+      - helm
+      - paas  
       ansible.builtin.shell:
         cmd: |
               curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
@@ -153,7 +175,9 @@
     #https://www.elastic.co/guide/en/cloud-on-k8s/1.8/k8s-deploy-elasticsearch.html
     - name: ( Elastic - Kibana) Check if helm is existed
       become: false
-      tags: elastic
+      tags: 
+      - elastic
+      - paas  
       ansible.builtin.shell:
         cmd: |
               kubectl -n elastic-system get statefulset elastic-operator
@@ -163,7 +187,9 @@
 
     - name:  ( Elastic - Kibana)  Create a directory if it does not exist for Elastic Yaml files
       become: false
-      tags: elastic
+      tags: 
+      - elastic
+      - paas  
       ansible.builtin.file:
         path: ~/elastic
         state: directory
@@ -171,7 +197,9 @@
    
     - name:  ( Elastic - Kibana)  Create a directory if it does not exist for Elastic data
       become: true
-      tags: elastic
+      tags: 
+      - elastic
+      - paas  
       ansible.builtin.file:
         path: '{{ data_storage_path }}/data_es1'
         state: directory
@@ -180,7 +208,9 @@
    
     - name:  ( Elastic - Kibana)  Copy elasticsearch yaml files to master
       become: false
-      tags: elastic
+      tags: 
+      - elastic
+      - paas  
       ansible.builtin.copy:
         src: ./k8s/ElasticSearche/ElasticKibana.yaml
         dest: ~/elastic/ElasticKibana.yaml
@@ -188,7 +218,9 @@
 
     - name: ( Elastic - Kibana)  Replce Data storage path in yaml files 
       become: false
-      tags: elastic
+      tags: 
+      - elastic
+      - paas  
       ansible.builtin.replace:
         path: ~/elastic/ElasticKibana.yaml
         regexp: "<<Data_Path>>"
@@ -197,7 +229,9 @@
 
     - name:  ( Elastic - Kibana)  deploying elastic search 
       become: false
-      tags: elastic
+      tags: 
+      - elastic
+      - paas  
       ansible.builtin.shell:
         cmd: |               
               kubectl apply -f "https://download.elastic.co/downloads/eck/2.3.0/crds.yaml"
@@ -225,7 +259,9 @@
     # Harbor
     - name: ( harbor ) Check if harbor exixts
       become: false
-      tags: harbor
+      tags: 
+      - harbor
+      - paas  
       ansible.builtin.shell:
         cmd: |
                 kubectl -n harbor get pod harbor-release-redis-0
@@ -234,7 +270,9 @@
 
     - name: ( Harbor ) Create a directory if it does not exist for Harbor yaml files
       become: false
-      tags: harbor
+      tags: 
+      - harbor
+      - paas  
       ansible.builtin.file:
        path: ~/harbor/helm
        state: directory
@@ -242,7 +280,9 @@
     
     - name: ( Harbor ) Create a directory if it does not exist for Harbor data
       become: true
-      tags: harbor
+      tags: 
+      - harbor
+      - paas  
       ansible.builtin.file:
        path: '{{ data_storage_path }}/data_harbor/'
        state: directory
@@ -251,7 +291,9 @@
 
     - name: ( Harbor ) Copy harbor yaml files to master
       become: false
-      tags: harbor
+      tags: 
+      - harbor
+      - paas  
       ansible.builtin.copy:
         src: ./k8s/Harbor/harbor.yaml
         dest: ~/harbor/harbor.yaml
@@ -259,7 +301,9 @@
 
     - name: (Harbor) Replce Data storage path in yaml files
       become: false
-      tags: harbor
+      tags: 
+      - harbor
+      - paas  
       ansible.builtin.replace:
         path: ~/harbor/harbor.yaml
         regexp: "<<Data_Path>>"
@@ -268,14 +312,18 @@
 
     - name: ( Harbor ) Copy harbor Helm files to helm node
       become: false
-      tags: harbor
+      tags: 
+      - harbor
+      - paas  
       ansible.builtin.copy:
         src: ./Helm/harbor2/harbor/
         dest: ~/harbor/helm
       when: "'(NotFound)' in harbor.stderr"
 
     - name: ( Harbor ) Fill out the values.yaml  file with StorageClass = default
-      tags: harbor
+      tags: 
+      - harbor
+      - paas  
       become: false
       ansible.builtin.replace:
        path: ~/harbor/helm/values.yaml
@@ -284,7 +332,9 @@
       when: "'(NotFound)' in harbor.stderr"
 
     - name: ( Harbor ) Set how to expose the harbor service. Set the type as "ingress", "clusterIP", "nodePort" or "loadBalancer"
-      tags: harbor
+      tags: 
+      - harbor
+      - paas  
       become: false
       ansible.builtin.replace:
        path: ~/harbor/helm/values.yaml
@@ -294,7 +344,9 @@
 
     - name: deploying Harbor
       become: false
-      tags: harbor
+      tags: 
+      - harbor
+      - paas
       ansible.builtin.shell:
         cmd: |
                kubectl create ns harbor  
@@ -317,7 +369,9 @@
     
     - name: ( whereabouts ) Check if whereabouts exixts
       become: false
-      tags: whereabouts
+      tags: 
+      - whereabouts
+      - caas  
       ansible.builtin.shell:
         cmd: |
                 kubectl get daemonset -n kube-system  whereabouts
@@ -326,7 +380,9 @@
    
     - name: ( whereabouts ) Create a directory if it does not exist for whereabouts 
       become: false
-      tags: whereabouts
+      tags: 
+      - whereabouts
+      - caas  
       ansible.builtin.file:
        path: ~/whereabouts/helm/
        state: directory
@@ -334,7 +390,9 @@
 
     - name: ( whereabouts ) Copy whereabouts Helm files to helm node
       become: false
-      tags: whereabouts
+      tags: 
+      - whereabouts
+      - caas  
       ansible.builtin.copy:
         src: ./Helm/whereabouts/helm-charts/
         dest: ~/whereabouts/helm/
@@ -342,7 +400,9 @@
      
     - name:  "( whereabouts ) deploying multus & whereabouts"
       become: false
-      tags: whereabouts
+      tags: 
+      - whereabouts
+      - caas  
       ansible.builtin.shell:
         cmd: |
                cd ~/whereabouts/helm/
@@ -360,7 +420,9 @@
     #fluentbit.
     - name: ( fluentbit. ) Check if fluentbit exixts
       become: false
-      tags: fluentbit
+      tags: 
+      - fluentbit
+      - paas  
       ansible.builtin.shell:
         cmd: |
                 kubectl -n fluent-bit get pods
@@ -370,7 +432,9 @@
      
     - name: ( fluentbit ) Create a directory if it does not exist for fluentbit
       become: false
-      tags: fluentbit
+      tags: 
+      - fluentbit
+      - paas  
       ansible.builtin.file:
        path:  ~/fluent-bit/helm/
        state: directory
@@ -378,7 +442,9 @@
 
     - name: ( fluentbit  ) Copy fluentbit Helm files to helm node
       become: false
-      tags: fluentbit
+      tags: 
+      - fluentbit
+      - paas  
       ansible.builtin.copy:
         src: ./Helm/fluent-bit/fluent-bit/
         dest: ~/fluent-bit/helm/ 
@@ -386,7 +452,9 @@
     
     - name:  "( fluentbit ) deploying fluentbit"
       become: false
-      tags: fluentbit
+      tags: 
+      - fluentbit
+      - paas
       ansible.builtin.shell:
         cmd: |
                kubectl create ns fluent-bit 
@@ -405,7 +473,9 @@
     #Prometheus
     - name: ( Prometheus ) Check if Prometheus exixts
       become: false
-      tags: prometheus
+      tags: 
+      - prometheus
+      - paas  
       ansible.builtin.shell:
         cmd: |
                 kubectl -n monitoring get deployments prometheus-adapter prometheus-operator kube-state-metrics grafana blackbox-exporter
@@ -415,7 +485,9 @@
 
     - name: ( prometheus ) Create a directory if it does not exist for prometheus 
       become: false
-      tags: prometheus
+      tags: 
+      - prometheus
+      - paas  
       ansible.builtin.file:
        path:  ~/prometheus/
        state: directory
@@ -423,7 +495,9 @@
 
     - name: ( prometheus  ) Copy prometheus files to master node
       become: false
-      tags: prometheus
+      tags: 
+      - prometheus
+      - paas  
       ansible.builtin.copy:
         src: ./kube-prometheus/kube-prometheus/
         dest: ~/prometheus/
@@ -431,7 +505,9 @@
 
     - name:  "(prometheus ) deploying prometheus suite"
       become: false
-      tags: prometheus
+      tags: 
+      - prometheus
+      - paas  
       ansible.builtin.shell:
         cmd: |
               cd ~/prometheus/
@@ -456,7 +532,9 @@
    
     - name: ( kafka & zookeeper ) Check if kafka exixts
       become: false
-      tags: kafka
+      tags: 
+      - kafka
+      - paas  
       ansible.builtin.shell:
         cmd: |
                 kubectl -n kafka get deployments  kafka-broker zookeeper
@@ -465,7 +543,9 @@
 
     - name: ( kafka & zookeeper ) Create a directory if it does not exist for kafka yaml files
       become: false
-      tags: kafka
+      tags: 
+      - kafka
+      - paas  
       ansible.builtin.file:
        path:  ~/kafka/
        state: directory
@@ -473,7 +553,9 @@
     
     - name: ( kafka & zookeeper ) Create a directory if it does not exist for kafka
       become: true
-      tags: kafka
+      tags: 
+      - kafka
+      - paas  
       ansible.builtin.file:
        path:  '{{ data_storage_path }}/data_kafka/'
        mode: '0777'
@@ -482,7 +564,9 @@
 
     - name: ( kafka & zookeeper ) Create a directory if it does not exist for kafka
       become: true
-      tags: kafka
+      tags: 
+      - kafka
+      - paas  
       ansible.builtin.file:
        path:  '{{ data_storage_path }}/data_zookeeper/'
        mode: '0777'
@@ -491,14 +575,18 @@
 
     - name: ( kafka  & zookeeper ) Copy kafka yaml  files to master node
       become: false
-      tags: kafka
+      tags: 
+      - kafka
+      - paas  
       ansible.builtin.copy:
         src: ./k8s/kafka/deploy-kafka.yaml
         dest: ~/kafka/deploy-kafka.yaml
       when: "'(NotFound)' in kafka.stderr"
  
     - name: (kafka & zookeeper ) Replce Data storage path in yaml files
-      tags: kafka
+      tags: 
+      - kafka
+      - paas  
       become: false
       ansible.builtin.replace:
         path: ~/kafka/deploy-kafka.yaml
@@ -508,7 +596,10 @@
       
     - name:  "( kafka & zookeeper ) deploying kafka & Zookeeper"
       become: false
-      tags: kafka
+      tags: 
+      - kafka
+      - paas  
+  
       ansible.builtin.shell:
         cmd: |
                #kubectl taint nodes $HOSTNAME node.kubernetes.io/disk-pressure- 
