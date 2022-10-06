@@ -1,5 +1,5 @@
 # kube_ansible
-### Thr enviroment
+### The environment
 - Redhat 8.1
 - Python-3.9.6
 - pip-22.2.2
