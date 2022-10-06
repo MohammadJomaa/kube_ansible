@@ -1,8 +1,8 @@
 # kube_ansible
 #Our enviroment
-Redhat 8.1
-Python-3.9.6
-pip-22.2.2
+- Redhat 8.1
+- Python-3.9.6
+- pip-22.2.2
 
 # Install Python
 Source Link :
@@ -36,7 +36,8 @@ Please make sure to have two node one for ansible controler and another for kube
 1. Open Hosts file and change to your hostname
 `vi hosts`
 
- 2. Edit Setup.yaml to map your hostnam
+
+ 2. Edit Setup.yaml to map your hostname and user
 `Vi Setup.yaml`
 
 ```yaml
@@ -50,9 +51,12 @@ name: K8s
     ansible_ssh_private_key_file: ~/.ssh/azureuser       
     k8s_version: "1.24"     # Kubernetes version to be installed
     
-    user: azureuser  
+    user: <youruser> 
     #the same user that we made ssh connection for istio
-```    
+```
+
+> Replace \<yourhostname> and     \<youruser>
+
 3.  Run Ansible PlayBook 
 ` ansible-playbook -i hosts Setup.yml -vv `
     
