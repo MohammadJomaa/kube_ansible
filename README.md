@@ -1,3 +1,4 @@
+
 # kube_ansible
 ### The environment
 - Redhat 8.1
@@ -60,5 +61,9 @@ name: K8s
 3.  Run Ansible PlayBook 
 ` ansible-playbook -i hosts Setup.yml -vv `
     
+
+## Destroy k8s cluster on master node
+`sh /kube_ansible/ansible_kub/Destroy-env.sh`
+   > You can run ansible destroy to remove another configurations
 
 
