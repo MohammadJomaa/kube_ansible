@@ -43,8 +43,6 @@ spec:
       # for more detail.
       # we may remove it after several releases
       - name: "data-migrator"
-        securityContext:
-           privileged: true 
         image: {{ .Values.database.internal.image.repository }}:{{ .Values.database.internal.image.tag }}
         imagePullPolicy: {{ .Values.imagePullPolicy }}
         command: ["/bin/sh"]
@@ -62,8 +60,6 @@ spec:
       # use this init container to correct the permission
       # as "fsGroup" applied before the init container running, the container has enough permission to execute the command
       - name: "data-permissions-ensurer"
-        securityContext:
-           privileged: true
         image: {{ .Values.database.internal.image.repository }}:{{ .Values.database.internal.image.tag }}
         imagePullPolicy: {{ .Values.imagePullPolicy }}
         command: ["/bin/sh"]
@@ -79,8 +75,6 @@ spec:
       containers:
       - name: database
         image: {{ .Values.database.internal.image.repository }}:{{ .Values.database.internal.image.tag }}
-        securityContext:
-           privileged: true
         imagePullPolicy: {{ .Values.imagePullPolicy }}
         livenessProbe:
           exec:

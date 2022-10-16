@@ -6,7 +6,10 @@
 
 - name: Install kubernetes packages
   yum:
-    name: [kubelet,kubeadm,kubectl]
+    name:
+      - "kubelet-{{ k8s_min_version }}" 
+      - "kubeadm-{{ k8s_min_version }}" 
+      - "kubectl-{{ k8s_min_version }}"
     disable_excludes: kubernetes
 
 - name: Enable kubelet service

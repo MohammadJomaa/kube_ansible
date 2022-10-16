@@ -4,105 +4,211 @@ metadata:
   name: default
 provisioner: kubernetes.io/no-provisioner
 volumeBindingMode: Immediate
-
-#harbor-pvs.yaml
-#----------
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data01-pvc-registry
+  namespace: harbor
+spec:
+  resources:
+    requests:
+      storage: 5Gi             
+  accessModes:
+    - ReadWriteOnce      
+  storageClassName: "default"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data02-pvc-chartmuseum
+  namespace: harbor
+spec:
+  resources:
+    requests:
+      storage: 5Gi
+  accessModes:
+    - ReadWriteOnce      
+  storageClassName: "default"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data03-pvc-jobservice
+  namespace: harbor
+spec:
+  resources:
+    requests:
+      storage: 5Gi     
+  accessModes:
+    - ReadWriteOnce      
+  storageClassName: "default"
+---  
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data04-pvc-database
+  namespace: harbor
+spec:
+  resources:
+    requests:
+      storage: 5Gi      
+  accessModes:
+    - ReadWriteOnce      
+  storageClassName: "default"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data05-pvc-redis
+  namespace: harbor
+spec:
+  resources:
+    requests:
+      storage: 5Gi     
+  accessModes:
+    - ReadWriteOnce      
+  storageClassName: "default"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data06-pvc-trivy
+  namespace: harbor
+spec:
+  resources:
+    requests:
+      storage: 5Gi    
+  accessModes:
+    - ReadWriteOnce      
+  storageClassName: "default"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data07-pvc
+  namespace: harbor
+spec:
+  accessModes:
+    - ReadWriteOnce      
+  storageClassName: "default"
+  resources:
+    requests:
+      storage: 5Gi
 ---
 #Jobservice
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: data01
+  name: data01-registry
   labels:
     type: local
 spec:
   storageClassName: "default"
   capacity:
-    storage: 1Gi
+    storage: 5Gi
   accessModes:
     - ReadWriteOnce
+  claimRef:
+    namespace: harbor       
+    name: data01-pvc-registry
   hostPath:
-    path: "<<Data_Path>>/data_harbor/data01"
+    path: "<<Data_Path>>/data_harbor/data01-registry"
 
 ---
 #Postgres
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: data02
+  name: data02-chartmuseum
   labels:
     type: local
 spec:
-  storageClassName: "default"
-  capacity:
-    storage: 8Gi
-  accessModes:
-    - ReadWriteOnce
-  hostPath:
-    path: "<<Data_Path>>/data_harbor/data02"
----
-#Chartmuseum
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: data03
-  labels:
-    type: local
-spec:
+  claimRef:
+    namespace: harbor       
+    name: data02-pvc-chartmuseum      
   storageClassName: "default"
   capacity:
     storage: 5Gi
   accessModes:
     - ReadWriteOnce
   hostPath:
-    path: "<<Data_Path>>/data_harbor/data03"
+    path: "<<Data_Path>>/data_harbor/data02-chartmuseum"
+---
+#Chartmuseum
+apiVersion: v1
+kind: PersistentVolume
+metadata:     
+  name: data03-jobservice
+  labels:
+    type: local
+spec:
+  claimRef:
+    namespace: harbor      
+    name: data03-pvc-jobservice      
+  storageClassName: "default"
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "<<Data_Path>>/data_harbor/data03-jobservice"
 
 ---
 #Trivy
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: data04
+  name: data04-database
   labels:
     type: local
 spec:
+  claimRef:
+    namespace: harbor       
+    name: data04-pvc-database      
   storageClassName: "default"
   capacity:
     storage: 5Gi
   accessModes:
     - ReadWriteOnce
   hostPath:
-    path: "<<Data_Path>>/data_harbor/data04"
+    path: "<<Data_Path>>/data_harbor/data04-database"
 
 ---
 #Registry
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: data05
+  name: data05-redis
   labels:
     type: local
 spec:
+  claimRef:
+    namespace: harbor       
+    name: data05-pvc-redis       
   storageClassName: "default"
   capacity:
     storage: 5Gi
   accessModes:
     - ReadWriteOnce
   hostPath:
-    path: "<<Data_Path>>/data_harbor/data05"
+    path: "<<Data_Path>>/data_harbor/data05-redis"
 
 ---
 #Redis
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: data06
+  name: data06-trivy
   labels:
     type: local
 spec:
+  claimRef:
+    namespace: harbor      
+    name: data06-pvc-trivy      
   storageClassName: "default"
   capacity:
-    storage: 8Gi
+    storage: 5Gi
   accessModes:
     - ReadWriteOnce
   hostPath:
@@ -115,9 +221,12 @@ metadata:
   labels:
     type: local
 spec:
+  claimRef:
+    namespace: harbor      
+    name: data07-pvc      
   storageClassName: "default"
   capacity:
-    storage: 8Gi
+    storage: 5Gi
   accessModes:
     - ReadWriteOnce
   hostPath:

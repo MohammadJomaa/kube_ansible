@@ -1,15 +1,15 @@
 ---
 - name: K8s
-  hosts: <yourhostname>
+  hosts: test
   #remote_user: azureuser
   become: yes
   become_method: sudo
   #gather_facts: no
   vars:
-    #ansible_ssh_private_key_file: ~/.ssh/azureuser       
+    ansible_ssh_private_key_file: ~/.ssh/azureuser       
     k8s_version: "1.24"     # Kubernetes version to be installed
-    
-    user: <youruser> 
+    k8s_min_version: "1.24.2"    
+    user: azureuser
     #the same user that we made ssh connection for istio
     
     data_storage_path: "/usr"
@@ -286,7 +286,7 @@
       ansible.builtin.file:
        path: '{{ data_storage_path }}/data_harbor/'
        state: directory
-       mode: '0777'
+       mode: '2770'
       when: "'(NotFound)'in harbor.stderr"
 
     - name: ( Harbor ) Copy harbor yaml files to master
@@ -342,6 +342,77 @@
        replace: 'type: nodePort'
       when: "'(NotFound)' in harbor.stderr"
 
+    - name: ( Harbor ) Create a directory for registry  service
+      tags:
+      - harbor
+      - paas
+      ansible.builtin.file:
+       path: '{{ data_storage_path }}/data_harbor/data01-registry'
+       state: directory
+       mode: '2770'
+       owner: 10000
+       group: 10000
+      when: "'(NotFound)' in harbor.stderr"
+
+    - name: ( Harbor ) Create a directory for chartmuseum service
+      tags:
+      - harbor
+      - paas
+      ansible.builtin.file:
+       path: '{{ data_storage_path }}/data_harbor/data02-chartmuseum'
+       state: directory
+       mode: '2770'
+       owner: 10000
+       group: 10000
+      when: "'(NotFound)' in harbor.stderr"
+
+    - name: ( Harbor )  Create a directory for jobservice  service
+      tags:
+      - harbor
+      - paas
+      ansible.builtin.file:
+       path: '{{ data_storage_path }}/data_harbor/data03-jobservice'
+       state: directory
+       mode: '2770'
+       owner: 10000
+       group: 10000
+    
+    - name: ( Harbor )  Create a directory for database  service
+      tags:
+      - harbor
+      - paas
+      ansible.builtin.file:
+       path: '{{ data_storage_path }}/data_harbor/data04-database'
+       state: directory
+       mode: '2770'
+       owner: 999
+       group: 999
+      when: "'(NotFound)' in harbor.stderr" 
+     
+    - name: ( Harbor )  Create a directory for redis  service
+      tags:
+      - harbor
+      - paas
+      ansible.builtin.file:
+       path: '{{ data_storage_path }}/data_harbor/data05-redis'
+       state: directory
+       mode: '2770'
+       owner: 999
+       group: 999
+      when: "'(NotFound)' in harbor.stderr"
+
+    - name: ( Harbor )  Create a directory for trivy service
+      tags:
+      - harbor
+      - paas
+      ansible.builtin.file:
+       path: '{{ data_storage_path }}/data_harbor/data06'
+       state: directory
+       mode: '2770'
+       owner: 10000
+       group: 10000
+      when: "'(NotFound)' in harbor.stderr" 
+
     - name: deploying Harbor
       become: false
       tags: 
@@ -356,7 +427,7 @@
                #sudo setfacl -m  group:10000:rwx '{{ data_storage_path }}/data_harbor/'
                #sudo chown -Rf 10000:10000 '{{ data_storage_path }}/data_harbor/'
                #sudo chmod -Rf g+rwxs '{{ data_storage_path }}/data_harbor/'
-               sudo  chmod -Rf 777  '{{ data_storage_path }}/data_harbor/'
+               #sudo  chmod -Rf 777  '{{ data_storage_path }}/data_harbor/'
                #kubectl -n harbor get pods
                #kubectl -n harbor get svc
                #kubectl -n harbor get svc | grep -i  nodeport

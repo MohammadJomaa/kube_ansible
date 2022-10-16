@@ -211,7 +211,7 @@ persistence:
     registry:
       # Use the existing PVC which must be created manually before bound,
       # and specify the "subPath" if the PVC is shared with other components
-      existingClaim: ""
+      existingClaim: "data01-pvc-registry"
       # Specify the "storageClass" used to provision the volume. Or the default
       # StorageClass will be used (the default).
       # Set it to "-" to disable dynamic provisioning
@@ -221,14 +221,14 @@ persistence:
       size: 5Gi
       annotations: {}
     chartmuseum:
-      existingClaim: ""
+      existingClaim: "data02-pvc-chartmuseum"
       storageClass: ""
       subPath: ""
       accessMode: ReadWriteOnce
       size: 5Gi
       annotations: {}
     jobservice:
-      existingClaim: ""
+      existingClaim: "data03-pvc-jobservice"
       storageClass: ""
       subPath: ""
       accessMode: ReadWriteOnce
@@ -237,7 +237,7 @@ persistence:
     # If external database is used, the following settings for database will
     # be ignored
     database:
-      existingClaim: ""
+      existingClaim: "data04-pvc-database"
       storageClass: ""
       subPath: ""
       accessMode: ReadWriteOnce
@@ -246,14 +246,14 @@ persistence:
     # If external Redis is used, the following settings for Redis will
     # be ignored
     redis:
-      existingClaim: ""
+      existingClaim: "data05-pvc-redis"
       storageClass: ""
       subPath: ""
       accessMode: ReadWriteOnce
       size: 1Gi
       annotations: {}
     trivy:
-      existingClaim: ""
+      existingClaim: "data06-pvc-trivy"
       storageClass: ""
       subPath: ""
       accessMode: ReadWriteOnce
