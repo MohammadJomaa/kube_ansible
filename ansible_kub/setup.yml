@@ -279,7 +279,7 @@
       when: "'(NotFound)'in harbor.stderr"
     
     - name: ( Harbor ) Create a directory if it does not exist for Harbor data
-      become: true
+      become: false
       tags: 
       - harbor
       - paas  
@@ -623,24 +623,22 @@
       when: "'(NotFound)' in kafka.stderr"
     
     - name: ( kafka & zookeeper ) Create a directory if it does not exist for kafka
-      become: true
+      become: false
       tags: 
       - kafka
       - paas  
       ansible.builtin.file:
        path:  '{{ data_storage_path }}/data_kafka/'
-       mode: '0777'
        state: directory
       when: "'(NotFound)' in kafka.stderr"
 
     - name: ( kafka & zookeeper ) Create a directory if it does not exist for kafka
-      become: true
+      become: false
       tags: 
       - kafka
       - paas  
       ansible.builtin.file:
        path:  '{{ data_storage_path }}/data_zookeeper/'
-       mode: '0777'
        state: directory
       when: "'(NotFound)' in kafka.stderr"
 
@@ -673,9 +671,8 @@
   
       ansible.builtin.shell:
         cmd: |
-               #kubectl taint nodes $HOSTNAME node.kubernetes.io/disk-pressure- 
                kubectl apply -f ~/kafka/deploy-kafka.yaml
-               sudo chmod -Rf 777 '{{ data_storage_path }}/data_zookeeper/'
-               sudo chmod -Rf 777 '{{ data_storage_path }}/data_kafka/'  
+               #sudo chmod -Rf 777 '{{ data_storage_path }}/data_zookeeper/'
+               #sudo chmod -Rf 777 '{{ data_storage_path }}/data_kafka/'  
                sudo rm -rf elastic fluent-bit harbor  kafka prometheus  whereabouts               
       when: "'(NotFound)' in kafka.stderr"              
