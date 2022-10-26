@@ -86,7 +86,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: data07-pvc
+  name: data07-pvc-jobservice-scan
   namespace: harbor
 spec:
   accessModes:
@@ -195,7 +195,7 @@ spec:
     path: "<<Data_Path>>/data_harbor/data05-redis"
 
 ---
-#Redis
+
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -212,23 +212,23 @@ spec:
   accessModes:
     - ReadWriteOnce
   hostPath:
-    path: "<<Data_Path>>/data_harbor/data06"
+    path: "<<Data_Path>>/data_harbor/data06-trivy"
 ---
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: data07
+  name: data07-jobservice-scan  
   labels:
     type: local
 spec:
   claimRef:
     namespace: harbor      
-    name: data07-pvc      
+    name: data07-pvc-jobservice-scan     
   storageClassName: "default"
   capacity:
     storage: 5Gi
   accessModes:
     - ReadWriteOnce
   hostPath:
-    path: "<<Data_Path>>/data_harbor/data07"
+    path: "<<Data_Path>>/data_harbor/data07-jobservice-scan"
 

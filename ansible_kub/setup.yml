@@ -1,18 +1,18 @@
 ---
 - name: K8s
-  hosts: test
+  hosts: master
   #remote_user: azureuser
   become: yes
   become_method: sudo
   #gather_facts: no
   vars:
-    ansible_ssh_private_key_file: ~/.ssh/azureuser       
+    # ansible_ssh_private_key_file: ~/.ssh/azureuser       
     k8s_version: "1.24"     # Kubernetes version to be installed
     k8s_min_version: "1.24.2"    
-    user: azureuser
+    user: ec2-user
     #the same user that we made ssh connection for istio
     
-    data_storage_path: "/usr"
+    data_storage_path: "/Data"
     selinux_state: permissive                            # SELinux state to be set on k8s nodes                 
     timezone: "Africa/Nairobi"                           # Timezone to set on all nodes
     k8s_cni: calico                                      # calico, flannel
@@ -173,7 +173,7 @@
     #------------------------------------------------------
     # elastic  ans Kibana Search
     #https://www.elastic.co/guide/en/cloud-on-k8s/1.8/k8s-deploy-elasticsearch.html
-    - name: ( Elastic - Kibana) Check if helm is existed
+    - name: ( Elastic - Kibana) Check if elastic is existed
       become: false
       tags: 
       - elastic
@@ -196,14 +196,14 @@
       when: "'No resources' in elastic.stderr"
    
     - name:  ( Elastic - Kibana)  Create a directory if it does not exist for Elastic data
-      become: true
+      become: false
       tags: 
       - elastic
       - paas  
       ansible.builtin.file:
         path: '{{ data_storage_path }}/data_es1'
         state: directory
-        mode: '0777'
+        mode: '2770'
       when: "'No resources' in elastic.stderr"
    
     - name:  ( Elastic - Kibana)  Copy elasticsearch yaml files to master
@@ -241,7 +241,7 @@
               #kubectl get elasticsearch -n elasticsearch
               #kubectl get pods --selector='elasticsearch.k8s.elastic.co/cluster-name=elastic-search' -n elasticsearch
               kubectl get service  elastic-search-es-http -n elasticsearch
-              sudo chmod -Rf 777 '{{ data_storage_path }}/data_es1/'           
+              #sudo chmod -Rf 777 '{{ data_storage_path }}/data_es1/'           
       when: "'No resources' in elastic.stderr"
     #"PASSWORD=$(kubectl -n elasticsearch get secret elastic-search-es-elastic-user -o go-template='{{.data.elastic | base64decode}}')"
     # curl -u "elastic:$PASSWORD" -k "https://localhost:30415"
@@ -406,7 +406,7 @@
       - harbor
       - paas
       ansible.builtin.file:
-       path: '{{ data_storage_path }}/data_harbor/data06'
+       path: '{{ data_storage_path }}/data_harbor/data06-trivy'
        state: directory
        mode: '2770'
        owner: 10000
@@ -676,3 +676,55 @@
                #sudo chmod -Rf 777 '{{ data_storage_path }}/data_kafka/'  
                sudo rm -rf elastic fluent-bit harbor  kafka prometheus  whereabouts               
       when: "'(NotFound)' in kafka.stderr"              
+#----------------------------------------------
+
+   
+
+
+    #https://github.com/traefik/traefik-helm-chart/tree/master/traefik
+    #traefik.
+    - name: ( Traefik. ) Check if Traefik exixts
+      become: false
+      tags: 
+      - traefik
+      - paas  
+      ansible.builtin.shell:
+        cmd: |
+                kubectl -n traefik get pods
+      register: traefik
+      ignore_errors: yes
+
+     
+    - name: ( Traefik ) Create a directory if it does not exist for traefik
+      become: false
+      tags: 
+      - traefik
+      - paas  
+      ansible.builtin.file:
+       path:  ~/traefik/helm/
+       state: directory
+      when: "'No resources' in traefik.stderr"
+
+    - name: ( Traefik  ) Copy traefik Helm files to helm node
+      become: false
+      tags: 
+      - traefik
+      - paas  
+      ansible.builtin.copy:
+        src: ./Helm/traefik/
+        dest: ~/traefik/helm/ 
+      when: "'No resources' in traefik.stderr"
+    
+    - name:  "( Traefik ) deploying traefik"
+      become: false
+      tags: 
+      - traefik
+      - paas
+      ansible.builtin.shell:
+        cmd: |
+               kubectl create ns traefik 
+               cd ~/traefik/helm/ 
+               helm install  traefik . --namespace=traefik
+      when: "'No resources' in traefik.stderr"
+      ignore_errors: yes
+ 

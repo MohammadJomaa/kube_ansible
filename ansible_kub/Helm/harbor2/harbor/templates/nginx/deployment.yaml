@@ -44,8 +44,6 @@ spec:
       automountServiceAccountToken: {{ .Values.nginx.automountServiceAccountToken | default false }}
       containers:
       - name: nginx
-        securityContext:    
-          privileged: true
         image: "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag }}"
         imagePullPolicy: "{{ .Values.imagePullPolicy }}"
         {{- $_ := set . "scheme" "HTTP" -}}

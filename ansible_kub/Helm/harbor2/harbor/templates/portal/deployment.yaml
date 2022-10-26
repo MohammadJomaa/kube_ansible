@@ -40,8 +40,6 @@ spec:
       automountServiceAccountToken: {{ .Values.portal.automountServiceAccountToken | default false }}
       containers:
       - name: portal
-        securityContext:  
-          privileged: true
         image: {{ .Values.portal.image.repository }}:{{ .Values.portal.image.tag }}
         imagePullPolicy: {{ .Values.imagePullPolicy }}
 {{- if .Values.portal.resources }}
